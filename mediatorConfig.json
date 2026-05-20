@@ -1,0 +1,29 @@
+{
+  "urn": "urn:mediator:openmrs-fhir-mpi",
+  "version": "1.0.0",
+  "name": "OpenMRS FHIR MDM Mediator",
+  "description": "Creates a Patient on a FHIR server, resolves the linked golden patient, and returns the CR UID to the caller.",
+  "defaultChannelConfig": [
+    {
+      "name": "OpenMRS Patient create/update to FHIR MDM",
+      "urlPattern": "^(/patients$|/Patient/[^/]+$|/openmrs-fhir-mdm/patient-create$|/openmrs-fhir-mdm/Patient/[^/]+)$",
+      "methods": [
+        "POST",
+        "PUT"
+      ],
+      "type": "http",
+      "allow": [
+        "OpenMRS"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "default",
+      "host": "localhost",
+      "port": 3000,
+      "path": "/patients",
+      "type": "http"
+    }
+  ]
+}
