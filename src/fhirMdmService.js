@@ -99,22 +99,59 @@ function matchesPatientId(sourceResourceId, patientId) {
   return sourceResourceId === patientId || sourceResourceId === ('Patient/' + patientId);
 }
 
-function selectBestGoldenResourceId(parameters, patientId) {
+var MDM_MATCH_RESULT_PRIORITY = {
+  MATCH: 0,
+  POSSIBLE_MATCH: 1,
+  NO_MATCH: 2
+};
+
+function matchResultPriority(matchResult) {
+  if (Object.prototype.hasOwnProperty.call(MDM_MATCH_RESULT_PRIORITY, matchResult)) {
+    return MDM_MATCH_RESULT_PRIORITY[matchResult];
+  }
+
+  return 99;
+}
+
+function isAcceptedMatchResult(matchResult, acceptedMatchResults) {
+  if (!acceptedMatchResults || !acceptedMatchResults.length) {
+    return true;
+  }
+
+  return acceptedMatchResults.indexOf(matchResult) !== -1;
+}
+
+function selectBestGoldenResourceId(parameters, patientId, acceptedMatchResults) {
   var links = extractLinks(parameters);
   var index;
   var goldenResourceId;
   var sourceResourceId;
+  var matchResult;
+  var priority;
+  var bestGoldenResourceId;
+  var bestPriority = 99;
 
   for (index = 0; index < links.length; index += 1) {
     goldenResourceId = getLinkPart(links[index], 'goldenResourceId');
     sourceResourceId = getLinkPart(links[index], 'sourceResourceId') || getLinkPart(links[index], 'resourceId');
+    matchResult = getLinkPart(links[index], 'matchResult');
 
-    if (goldenResourceId && (!patientId || matchesPatientId(sourceResourceId, patientId))) {
-      return goldenResourceId;
+    if (!goldenResourceId || (patientId && !matchesPatientId(sourceResourceId, patientId))) {
+      continue;
+    }
+
+    if (!isAcceptedMatchResult(matchResult, acceptedMatchResults)) {
+      continue;
+    }
+
+    priority = matchResultPriority(matchResult);
+    if (priority < bestPriority) {
+      bestGoldenResourceId = goldenResourceId;
+      bestPriority = priority;
     }
   }
 
-  return undefined;
+  return bestGoldenResourceId;
 }
 
 async function queryMdmLinks(patientId, config) {
@@ -126,8 +163,9 @@ async function queryMdmLinks(patientId, config) {
   var requestConfig = buildRequestConfig(config);
   var response;
 
-  if (config.fhir.mdmMatchResult) {
-    params.matchResult = config.fhir.mdmMatchResult;
+  // HAPI filters server-side on a single matchResult; omit when multiple are accepted.
+  if (config.fhir.mdmMatchResults && config.fhir.mdmMatchResults.length === 1) {
+    params.matchResult = config.fhir.mdmMatchResults[0];
   }
 
   requestConfig.params = params;
@@ -147,7 +185,7 @@ async function waitForGoldenResourceId(patientId, config) {
 
   for (attempt = 0; attempt < config.fhir.mdmPollCount; attempt += 1) {
     parameters = await queryMdmLinks(patientId, config);
-    goldenResourceId = selectBestGoldenResourceId(parameters, patientId);
+    goldenResourceId = selectBestGoldenResourceId(parameters, patientId, config.fhir.mdmMatchResults);
 
     if (goldenResourceId) {
       return goldenResourceId;

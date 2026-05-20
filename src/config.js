@@ -43,6 +43,27 @@ function mediatorPathPrefix() {
   return String(raw).replace(/^\/+|\/+$/g, '');
 }
 
+/**
+ * Comma-separated HAPI MDM matchResult values to accept (e.g. MATCH,POSSIBLE_MATCH).
+ * Empty, "any", or "*" => MATCH and POSSIBLE_MATCH (recommended for auto-linked patients).
+ */
+function parseMdmMatchResults(value) {
+  var trimmed;
+
+  if (value === undefined || value === null) {
+    return ['MATCH', 'POSSIBLE_MATCH'];
+  }
+
+  trimmed = String(value).trim();
+  if (!trimmed || trimmed === '*' || trimmed.toLowerCase() === 'any') {
+    return ['MATCH', 'POSSIBLE_MATCH'];
+  }
+
+  return trimmed.split(',').map(function (entry) {
+    return entry.trim();
+  }).filter(Boolean);
+}
+
 var config = {
   port: toInt(process.env.PORT, 3000),
   mediatorPathPrefix: mediatorPathPrefix(),
@@ -53,7 +74,7 @@ var config = {
     timeoutMs: toInt(process.env.FHIR_TIMEOUT_MS, 15000),
     patientPath: process.env.FHIR_PATIENT_PATH || '/Patient',
     mdmQueryPath: process.env.FHIR_MDM_QUERY_PATH || '/$mdm-query-links',
-    mdmMatchResult: process.env.FHIR_MDM_MATCH_RESULT || 'MATCH',
+    mdmMatchResults: parseMdmMatchResults(process.env.FHIR_MDM_MATCH_RESULT),
     mdmPollCount: toInt(process.env.FHIR_MDM_POLL_COUNT, 6),
     mdmFirstPollDelayMs: toInt(process.env.FHIR_MDM_FIRST_POLL_DELAY_MS, 30000),
     mdmPollDelayMs: toInt(process.env.FHIR_MDM_POLL_DELAY_MS, 1000),

@@ -149,4 +149,5 @@ If you enable mediator basic auth, configure the OpenHIM route to this mediator 
 
 - HAPI MDM linkage may not be available instantly after patient creation, so this mediator polls for a short configurable window.
 - If your FHIR server expects `resourceId=Patient/<id>` instead of just `<id>` for `/$mdm-query-links`, set `FHIR_MDM_RESOURCE_ID_MODE=reference`.
+- HAPI often creates new links as `POSSIBLE_MATCH` before they become `MATCH`. If `/$mdm-query-links?matchResult=MATCH` returns no links, set `FHIR_MDM_MATCH_RESULT=MATCH,POSSIBLE_MATCH` (or `POSSIBLE_MATCH` only).
 - If MDM processing is slow or asynchronous in your environment, the more robust pattern is event-based orchestration instead of a strictly synchronous request/response.
